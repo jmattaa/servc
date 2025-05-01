@@ -1,4 +1,5 @@
 #include "servc.h"
+#include "http.h"
 #include "logger.h"
 #include <arpa/inet.h>
 #include <errno.h>
@@ -92,9 +93,9 @@ cleanup:
 
 static void servc_handle_conn(int cfd)
 {
-    char buffer[1024] = {0};
+    char b[1024] = {0};
 
-    ssize_t n = recv(cfd, buffer, sizeof(buffer) - 1, 0);
+    ssize_t n = recv(cfd, b, sizeof(b) - 1, 0);
     if (n == -1)
     {
         servc_logger_error("Unable to receive data: %s\n", strerror(errno));
@@ -107,16 +108,15 @@ static void servc_handle_conn(int cfd)
         return;
     }
 
-    servc_logger_info("Received data: %s\n", buffer);
-
-    const char *response = "HTTP/1.1 200 OK\r\n"
-                           "Content-Type: text/plain\r\n"
-                           "Content-Length: 12\r\n"
-                           "Connection: close\r\n"
-                           "\r\n"
-                           "Hello world";
-
-    if (send(cfd, response, strlen(response), 0) == -1)
+    char *res;
+    servc_http *http = servc_http_respond(b, &res);
+    servc_logger_info("%s\n", http->startline);
+    if (!res)
+    {
+        servc_logger_error("unable to respond to client\n");
+        return;
+    }
+    if (send(cfd, res, strlen(res), 0) == -1)
     {
         servc_logger_error("Unable to send data: %s\n", strerror(errno));
         return;
