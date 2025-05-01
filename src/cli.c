@@ -9,7 +9,9 @@
 #define S_ARGS_ITER(_X)                                                        \
     _X("help", 0, 0, 'h', "Show help message")                                 \
     _X("port", 0, 0, 'p',                                                      \
-       "Port number to use defaults to (6969). (Usage: -p6969 or --port=6969)")
+       "Port number to use defaults to (6969). (Usage: -p6969 or "             \
+       "--port=6969)")                                                         \
+    _X("version", 0, 0, 'v', "Show current version")
 
 #define _X(name, a, b, short, ...) {name, a, b, short},
 static const struct option long_args[] = {S_ARGS_ITER(_X){0, 0, 0, 0}};
@@ -26,13 +28,10 @@ servc_opts *servc_cli_parse(int argc, char **argv)
     const char *dir = ".";
 
     int c;
-    while ((c = getopt_long(argc, argv, "hp::", long_args, NULL)) != -1)
+    while ((c = getopt_long(argc, argv, "hvp::", long_args, NULL)) != -1)
     {
         switch (c)
         {
-        case 'h':
-            opts->show_help = 1;
-            break;
         case 'p':
             errno = 0;
             if (optarg == NULL)
@@ -41,6 +40,12 @@ servc_opts *servc_cli_parse(int argc, char **argv)
             opts->port = strtol(optarg, NULL, 10);
             if (errno != 0 || (opts->port < 0 || opts->port > 65535))
                 servc_logger_fatal(1, "Invalid port number: %s\n", optarg);
+            break;
+        case 'h':
+            opts->show_help = 1;
+            break;
+        case 'v':
+            opts->show_version = 1;
             break;
         default:
             servc_logger_fatal(1, "Invalid option: %c\n", c);

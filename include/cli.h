@@ -6,9 +6,10 @@
 
 typedef struct
 {
-    uint8_t show_help : 1;
     const char *dir;
     int port;
+    uint8_t show_help : 1;
+    uint8_t show_version : 1;
 } servc_opts;
 
 servc_opts *servc_cli_parse(int argc, char **argv);
