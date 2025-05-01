@@ -2,23 +2,25 @@
 #include "servc.h"
 #include <stdio.h>
 
+servc_opts *sopts;
+
 int main(int argc, char **argv)
 {
-    servc_opts *opts = servc_cli_parse(argc, argv);
-    if (opts->show_help)
+    sopts = servc_cli_parse(argc, argv);
+    if (sopts->show_help)
     {
         servc_cli_print_help();
         goto clean;
     }
-    if (opts->show_version)
+    if (sopts->show_version)
     {
         printf("servc %s\n", SERVC_VERSION);
         goto clean;
     }
 
-    servc_run(opts);
+    servc_run();
 
 clean:
-    servc_cli_destroy_opts(opts);
+    servc_cli_destroy_opts(sopts);
     return 0;
 }

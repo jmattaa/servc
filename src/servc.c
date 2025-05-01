@@ -1,6 +1,7 @@
 #include "servc.h"
 #include "http.h"
 #include "logger.h"
+#include "main.h"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
@@ -19,7 +20,7 @@ static void servc_stop(int _)
 }
 static void servc_handle_conn(int cfd);
 
-void servc_run(servc_opts *opts)
+void servc_run()
 {
     signal(SIGINT, servc_stop); // override ctrl+c so we don mem leak
 
@@ -37,7 +38,7 @@ void servc_run(servc_opts *opts)
 
     struct sockaddr_in addr = {
         .sin_family = AF_INET,
-        .sin_port = htons(opts->port),
+        .sin_port = htons(sopts->port),
         .sin_addr = {.s_addr = INADDR_ANY},
     };
 
@@ -53,7 +54,7 @@ void servc_run(servc_opts *opts)
         goto cleanup;
     }
 
-    servc_logger_info("Listening on http://127.0.0.1:%d\n", opts->port);
+    servc_logger_info("Listening on http://127.0.0.1:%d\n", sopts->port);
 
     fd_set fds;
     FD_ZERO(&fds);
@@ -108,9 +109,18 @@ static void servc_handle_conn(int cfd)
         return;
     }
 
+    char *btemp = strdup(b);
     char *res;
     servc_http *http = servc_http_respond(b, &res);
-    servc_logger_info("%s\n", http->startline);
+
+    if (sopts->verbose)
+        servc_logger_info("%s\n", btemp);
+    else
+        servc_logger_info("%s\n", http->startline);
+
+    free(btemp);
+    servc_http_destroy(http);
+
     if (!res)
     {
         servc_logger_error("unable to respond to client\n");

@@ -5,13 +5,16 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define S_ARGS_ITER(_X)                                                        \
     _X("help", 0, 0, 'h', "Show help message")                                 \
     _X("port", 0, 0, 'p',                                                      \
        "Port number to use defaults to (6969). (Usage: -p6969 or "             \
        "--port=6969)")                                                         \
-    _X("version", 0, 0, 'v', "Show current version")
+    _X("verbose", 0, 0, 'v',                                                   \
+       "Show the whole request instead of just the start line")                \
+    _X("version", 0, 0, 0, "Show current version")
 
 #define _X(name, a, b, short, ...) {name, a, b, short},
 static const struct option long_args[] = {S_ARGS_ITER(_X){0, 0, 0, 0}};
@@ -23,7 +26,12 @@ static const char *descriptions[] = {S_ARGS_ITER(_X)};
 servc_opts *servc_cli_parse(int argc, char **argv)
 {
     servc_opts *opts = malloc(sizeof(servc_opts));
+
+    // dir is set below defaults to "."
     opts->port = 6969;
+    opts->show_help = 0;
+    opts->show_version = 0;
+    opts->verbose = 0;
 
     const char *dir = ".";
 
@@ -45,7 +53,11 @@ servc_opts *servc_cli_parse(int argc, char **argv)
             opts->show_help = 1;
             break;
         case 'v':
-            opts->show_version = 1;
+            opts->verbose = 1;
+            break;
+        case 0:
+            if (strcmp(long_args[optind].name, "version") == 0)
+                opts->show_version = 1;
             break;
         default:
             servc_logger_fatal(1, "Invalid option: %c\n", c);

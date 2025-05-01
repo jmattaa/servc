@@ -9,6 +9,7 @@ typedef struct
     const char *dir;
     int port;
     uint8_t show_help : 1;
+    uint8_t verbose : 1;
     uint8_t show_version : 1;
 } servc_opts;
 
