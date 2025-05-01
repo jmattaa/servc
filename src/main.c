@@ -1,4 +1,5 @@
 #include "cli.h"
+#include "servc.h"
 #include <stdio.h>
 
 int main(int argc, char **argv)
@@ -10,9 +11,8 @@ int main(int argc, char **argv)
         goto clean;
     }
 
-    printf("Port: %d\n", opts->port);
-    printf("Dir: %s\n", opts->dir);
-
+    servc_run(opts);
+    
 clean:
     servc_cli_destroy_opts(opts);
     return 0;
