@@ -19,7 +19,7 @@ const char *servc_mime(const char *fpath)
 
     const char *fext = strrchr(fpath, '.');
     if (fext == NULL || *(fext + 1) == '\0')
-        return "application/octet-stream";
+        return "text/plain";
     fext++; // skip the '.'
 
     for (int i = 0; mime_types[i].ext != NULL; i++)
@@ -28,5 +28,5 @@ const char *servc_mime(const char *fpath)
             return mime_types[i].mime;
     }
 
-    return "application/octet-stream";
+    return "text/plain";
 }
