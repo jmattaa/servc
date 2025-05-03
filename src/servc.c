@@ -120,7 +120,6 @@ static void *servc_handle_conn(void *arg)
 
     if (n == 0)
     {
-        servc_logger_info("Connection closed by client\n");
         close(cfd);
         return NULL;
     }
