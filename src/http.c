@@ -1,6 +1,7 @@
 #include "http.h"
 #include "ftype.h"
 #include "logger.h"
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -95,10 +96,12 @@ void servc_http_destroy(servc_http *http)
         free(http);
 }
 
-static const char *notfound = "404 Not Found\r\n"
-                              "Content-Type: text/plain\r\n"
-                              "Content-Length:" SERVC_HTTP_404_MSGLEN "\r\n"
-                              "\r\n" SERVC_HTTP_404_MSG;
+static const char *notfound =
+    SERVC_HTTP_PROTO "404 Not Found\r\n"
+                     "Server: servc\r\n"
+                     "Content-Type: text/html\r\n"
+                     "Content-Length:" SERVC_HTTP_404_MSGLEN "\r\n"
+                     "\r\n" SERVC_HTTP_404_MSG;
 
 static char *http_get(char *targ, size_t *res_len)
 {
@@ -118,7 +121,7 @@ static char *http_get(char *targ, size_t *res_len)
     int fd = open(targ, O_RDONLY);
     if (fd == -1)
     {
-        servc_logger_error("File not found: %s\n", targ);
+        servc_logger_error("Failed to open '%s': %s\n", targ, strerror(errno));
         *res_len = strlen(notfound);
         return strdup(notfound);
     }
@@ -135,10 +138,11 @@ static char *http_get(char *targ, size_t *res_len)
     char header[HEADER_SIZE];
     const char *mime = servc_mime(targ);
     int header_len = snprintf(header, sizeof(header),
-                              "HTTP/1.1 200 OK\r\n"
-                              "Content-Type: %s\r\n"
-                              "Content-Length: %zu\r\n"
-                              "\r\n",
+                              SERVC_HTTP_PROTO "200 OK\r\n"
+                                               "Server: servc\r\n"
+                                               "Content-Type: %s\r\n"
+                                               "Content-Length: %zu\r\n"
+                                               "\r\n",
                               mime, (size_t)st.st_size);
 
     if (header_len < 0 || header_len >= HEADER_SIZE)
