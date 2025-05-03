@@ -13,8 +13,7 @@
        "Port number to use defaults to (6969). (Usage: -p6969 or "             \
        "--port=6969)")                                                         \
     _X("verbose", 0, 0, 'v',                                                   \
-       "Show the whole request instead of just the start line")                \
-    _X("version", 0, 0, 0, "Show current version")
+       "Show the whole request instead of just the start line")
 
 #define _X(name, a, b, short, ...) {name, a, b, short},
 static const struct option long_args[] = {S_ARGS_ITER(_X){0, 0, 0, 0}};
@@ -30,7 +29,6 @@ servc_opts *servc_cli_parse(int argc, char **argv)
     // dir is set below defaults to "."
     opts->port = 6969;
     opts->show_help = 0;
-    opts->show_version = 0;
     opts->verbose = 0;
 
     const char *dir = ".";
@@ -55,12 +53,8 @@ servc_opts *servc_cli_parse(int argc, char **argv)
         case 'v':
             opts->verbose = 1;
             break;
-        case 0:
-            if (strcmp(long_args[optind].name, "version") == 0)
-                opts->show_version = 1;
-            break;
         default:
-            servc_logger_fatal(1, "Invalid option: %c\n", c);
+            break;
         }
     }
 
