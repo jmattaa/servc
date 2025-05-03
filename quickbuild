@@ -52,6 +52,15 @@ relobjs as obj {
 
 # utility tasks
 
+"install" {
+    depends = "rel";
+    run = "sudo install -m 755 [rel_exec] /usr/local/bin/servc";
+}
+
+"uninstall" {
+    run = "sudo rm /usr/local/bin/servc";
+}
+
 "mkdirs" {
     run = "mkdir -p build/dev build/rel";
 }
