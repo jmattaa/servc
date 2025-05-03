@@ -28,7 +28,7 @@ void servc_run()
     struct sigaction sa;
     sa.sa_handler = servc_stop;
     sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0; 
+    sa.sa_flags = 0;
     sigaction(SIGINT, &sa, NULL);
 
     int sfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -127,7 +127,9 @@ static void *servc_handle_conn(void *arg)
 
     char *btemp = strdup(b);
     char *res;
-    servc_http *http = servc_http_respond(b, &res);
+
+    size_t res_len;
+    servc_http *http = servc_http_respond(b, &res, &res_len);
 
     if (sopts->verbose)
         servc_logger_info("%s\n", btemp);
@@ -144,10 +146,8 @@ static void *servc_handle_conn(void *arg)
         return NULL;
     }
 
-    if (send(cfd, res, strlen(res), 0) == -1)
-    {
+    if (send(cfd, res, res_len, 0) == -1)
         servc_logger_error("Unable to send data: %s\n", strerror(errno));
-    }
 
     close(cfd);
     free(res);

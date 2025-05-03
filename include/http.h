@@ -1,6 +1,7 @@
 #ifndef SERVC_HTTP_H
 #define SERVC_HTTP_H
 
+#include <stddef.h>
 typedef enum 
 {
     SERVC_HTTP_GET,
@@ -18,10 +19,13 @@ typedef struct
     // statically serve files
 } servc_http;
 
-#define SERV_HTTP_PROTO "HTTP/1.1"
+#define SERVC_HTTP_PROTO "HTTP/1.1"
+
+#define SERVC_HTTP_404_MSG "404 Not Found\n"
+#define SERVC_HTTP_404_MSGLEN "15"
 
 servc_http *servc_http_parse(char *req);
-servc_http *servc_http_respond(char *req, char **res);
+servc_http *servc_http_respond(char *req, char **res, size_t *res_len);
 void servc_http_destroy(servc_http *http);
 
 #endif
