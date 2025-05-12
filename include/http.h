@@ -21,21 +21,8 @@ typedef struct
 
 #define SERVC_HTTP_PROTO "HTTP/1.1 "
 
-#define SERVC_HTTP_404_MSG                                                     \
-    "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta "    \
-    "name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"     \
-    "<title>404 Not "                                                          \
-    "Found</"                                                                  \
-    "title><style>body{margin:0;font-family:sans-serif;background:#f8f9fa;"    \
-    "display:flex;justify-content:center;align-items:center;height:100vh;"     \
-    "color:#333}"                                                              \
-    ".container{text-align:center;padding:20px}.title{font-size:72px;font-"    \
-    "weight:bold}.desc{color:#666;font-size:18px}</style></head>"              \
-    "<body><div class=\"container\"><div class=\"title\">404</div><div "       \
-    "class=\"desc\">man you prolly a developer how didn you manage? jk man "   \
-    "you good we all do mistakes</div></div></body></html>"
-
-#define SERVC_HTTP_404_MSGLEN "610"
+#define SERVC_HTTP_404_MSG "404, page ain't found, :\\"
+#define SERVC_HTTP_404_MSGLEN "25"
 
 servc_http *servc_http_parse(char *req);
 servc_http *servc_http_respond(char *req, char **res, size_t *res_len);

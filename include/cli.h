@@ -2,7 +2,7 @@
 #define SERVC_CLI_H
 
 #include <stdint.h>
-#define SERVC_VERSION "0.1.0"
+#define SERVC_VERSION "0.1.1"
 
 typedef struct
 {

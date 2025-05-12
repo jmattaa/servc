@@ -99,7 +99,7 @@ void servc_http_destroy(servc_http *http)
 static const char *notfound =
     SERVC_HTTP_PROTO "404 Not Found\r\n"
                      "Server: servc\r\n"
-                     "Content-Type: text/html\r\n"
+                     "Content-Type: text/plain\r\n"
                      "Content-Length:" SERVC_HTTP_404_MSGLEN "\r\n"
                      "\r\n" SERVC_HTTP_404_MSG;
 
