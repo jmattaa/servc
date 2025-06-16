@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -208,6 +209,7 @@ static char *http_getdir(struct stat st, const char *targ, size_t *res_len)
         t[strlen(t) - 1] = '\0';
 
     DIR *dir = opendir(t);
+    free(t);
     if (dir == NULL)
     {
         servc_logger_error("Failed to open directory: %s\n", t);
@@ -234,12 +236,11 @@ static char *http_getdir(struct stat st, const char *targ, size_t *res_len)
         if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
             continue;
 
-        char *temp =
-            malloc(strlen(htmltemp) + strlen(ent->d_name) + strlen(ent->d_name) + 1);
+        char *temp = malloc(strlen(htmltemp) + strlen(ent->d_name) +
+                            strlen(ent->d_name) + 1);
         if (!temp)
         {
             servc_logger_error("Memory allocation failed\n");
-            free(ent->d_name);
             closedir(dir);
             free(ent);
             free(html);
@@ -248,7 +249,8 @@ static char *http_getdir(struct stat st, const char *targ, size_t *res_len)
         }
 
         snprintf(temp,
-                 strlen(htmltemp) + strlen(ent->d_name) + strlen(ent->d_name) + 1,
+                 strlen(htmltemp) + strlen(ent->d_name) + strlen(ent->d_name) +
+                     1,
                  htmltemp, ent->d_name, ent->d_name);
 
         html = realloc(html, strlen(html) + strlen(temp) + 1);
@@ -256,7 +258,6 @@ static char *http_getdir(struct stat st, const char *targ, size_t *res_len)
         {
             servc_logger_error("Memory allocation failed\n");
             free(temp);
-            free(ent->d_name);
             closedir(dir);
             free(ent);
             free(html);
