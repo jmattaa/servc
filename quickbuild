@@ -24,6 +24,11 @@ rel_exec = "build/rel/servc";
     run = "[cc] [lflagsdev] -o [dev_exec] [devobjs]";
 }
 
+"run" {
+    depends = "dev";
+    run = "./[dev_exec]";
+}
+
 "build_devobjs" {
     depends = "srcs", "headers", devobjs;
     depends_parallel = true;

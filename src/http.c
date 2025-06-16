@@ -1,15 +1,22 @@
+// TODO: many 404 messages should be 500!!!!!! but yo no orka
 #include "http.h"
 #include "ftype.h"
 #include "logger.h"
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-static char *http_get(char *targ, size_t *res_len);
+#define HEADER_SIZE 512
+
+static char *http_get(const char *targ, size_t *res_len);
+static char *http_getfile(struct stat st, const char *targ, size_t *res_len);
+static char *http_getdir(const char *targ, size_t *res_len);
 
 servc_http *servc_http_parse(char *req)
 {
@@ -103,7 +110,7 @@ static const char *notfound =
                      "Content-Length:" SERVC_HTTP_404_MSGLEN "\r\n"
                      "\r\n" SERVC_HTTP_404_MSG;
 
-static char *http_get(char *targ, size_t *res_len)
+static char *http_get(const char *targ, size_t *res_len)
 {
     if (targ == NULL)
     {
@@ -112,12 +119,33 @@ static char *http_get(char *targ, size_t *res_len)
         return strdup(notfound);
     }
 
+    uint8_t isidxhtml = 0;
     if (strcmp(targ, "/") == 0)
-        targ = "index.html";
+    {
+        targ = "index.html"; // ain't this really unsafe??
+        isidxhtml = 1;
+    }
 
     if (targ[0] == '/')
         targ++; // skip '/'
 
+    if (isidxhtml && access(targ, F_OK) == -1)
+        targ = "./"; // this too ain't it unsafe??????
+
+    struct stat st;
+    if (stat(targ, &st) == -1)
+    {
+        servc_logger_error("Failed to stat file: %s\n", targ);
+        *res_len = strlen(notfound);
+        return strdup(notfound);
+    }
+    if (S_ISDIR(st.st_mode))
+        return http_getdir(targ, res_len);
+    return http_getfile(st, targ, res_len);
+}
+
+static char *http_getfile(struct stat st, const char *targ, size_t *res_len)
+{
     int fd = open(targ, O_RDONLY);
     if (fd == -1)
     {
@@ -126,15 +154,7 @@ static char *http_get(char *targ, size_t *res_len)
         return strdup(notfound);
     }
 
-    struct stat st;
-    if (fstat(fd, &st) == -1)
-    {
-        servc_logger_error("Failed to stat file: %s\n", targ);
-        close(fd);
-        return NULL;
-    }
-
-#define HEADER_SIZE 512
+    // todo we repeat this header string again in getdir FIX IT!!!!!
     char header[HEADER_SIZE];
     const char *mime = servc_mime(targ);
     int header_len = snprintf(header, sizeof(header),
@@ -172,6 +192,137 @@ static char *http_get(char *targ, size_t *res_len)
     }
 
     close(fd);
+    *res_len = total_len;
+    return res;
+}
+
+static char *http_getdir(const char *targ, size_t *res_len)
+{
+    // kinda like https://github.com/jmattaa/laser
+    // the function called laser_process_entries in src/laser.c
+
+    DIR *dir = opendir(targ);
+    if (dir == NULL)
+    {
+        servc_logger_error("Failed to open directory: %s\n", targ);
+        *res_len = strlen(notfound);
+        return strdup(notfound);
+    }
+
+    struct dirent *ent = NULL;
+
+    // the '/' before the target is importante cuz it says to the browser
+    // to go directly to pathatag
+    const char *htmltemp = "<li><a href=\"/%s\">%s</a></li>\n";
+    char *html = malloc(1);
+    if (!html)
+    {
+        servc_logger_error("Memory allocation failed\n");
+        closedir(dir);
+        free(ent);
+        *res_len = strlen(notfound);
+        return strdup(notfound);
+    }
+    html[0] = '\0';
+
+    while ((ent = readdir(dir)) != NULL)
+    {
+        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+            continue;
+
+
+        size_t pathatag_len;
+        if (targ[strlen(targ) - 1] != '/')
+            // +1 for the '/' and +1 for the '\0'
+            pathatag_len = strlen(targ) + strlen(ent->d_name) + 2;
+        else
+            pathatag_len = strlen(ent->d_name);
+
+        char *pathatag = malloc(pathatag_len);
+
+        if (!pathatag)
+        {
+            servc_logger_error("Memory allocation failed\n");
+            closedir(dir);
+            free(ent);
+            free(html);
+            *res_len = strlen(notfound);
+            return strdup(notfound);
+        }
+        if (pathatag_len == strlen(ent->d_name))
+        {
+            free(pathatag);
+            pathatag = strdup(ent->d_name);
+        }
+        else
+            snprintf(pathatag, pathatag_len, "%s/%s", targ, ent->d_name);
+
+        char *temp = malloc(strlen(htmltemp) + pathatag_len +
+                            strlen(ent->d_name) + 1);
+        if (!temp)
+        {
+            servc_logger_error("Memory allocation failed\n");
+            closedir(dir);
+            free(ent);
+            free(html);
+            *res_len = strlen(notfound);
+            return strdup(notfound);
+        }
+
+        snprintf(temp,
+                 strlen(htmltemp) + pathatag_len + strlen(ent->d_name) + 1,
+                 htmltemp, pathatag, ent->d_name);
+
+        html = realloc(html, strlen(html) + strlen(temp) + 1);
+        if (!html)
+        {
+            servc_logger_error("Memory allocation failed\n");
+            free(temp);
+            closedir(dir);
+            free(ent);
+            free(html);
+            free(pathatag);
+            *res_len = strlen(notfound);
+            return strdup(notfound);
+        }
+        html = strncat(html, temp, strlen(temp));
+
+        free(pathatag);
+        free(temp);
+    }
+    free(ent);
+    closedir(dir);
+
+    char header[HEADER_SIZE];
+    int header_len = snprintf(header, sizeof(header),
+                              SERVC_HTTP_PROTO "200 OK\r\n"
+                                               "Server: servc\r\n"
+                                               "Content-Type: text/html\r\n"
+                                               "Content-Length: %zu\r\n"
+                                               "\r\n",
+                              strlen(html));
+
+    if (header_len < 0 || header_len >= HEADER_SIZE)
+    {
+        servc_logger_error("Header generation failed or truncated\n");
+        free(html);
+        *res_len = strlen(notfound);
+        return strdup(notfound);
+    }
+
+    size_t total_len = header_len + strlen(html);
+    char *res = malloc(total_len);
+    if (!res)
+    {
+        servc_logger_error("Memory allocation failed\n");
+        free(html);
+        *res_len = strlen(notfound);
+        return strdup(notfound);
+    }
+    memcpy(res, header, header_len);
+    memcpy(res + header_len, html, strlen(html));
+
+    free(html);
     *res_len = total_len;
     return res;
 }

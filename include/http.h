@@ -2,6 +2,9 @@
 #define SERVC_HTTP_H
 
 #include <stddef.h>
+
+#define SERVC_PATH_MAX 1024
+
 typedef enum
 {
     SERVC_HTTP_GET,
