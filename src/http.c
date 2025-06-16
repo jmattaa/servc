@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +17,7 @@
 
 static char *http_get(const char *targ, size_t *res_len);
 static char *http_getfile(struct stat st, const char *targ, size_t *res_len);
-static char *http_getdir(struct stat st, const char *targ, size_t *res_len);
+static char *http_getdir(const char *targ, size_t *res_len);
 
 servc_http *servc_http_parse(char *req)
 {
@@ -140,7 +141,7 @@ static char *http_get(const char *targ, size_t *res_len)
         return strdup(notfound);
     }
     if (S_ISDIR(st.st_mode))
-        return http_getdir(st, targ, res_len);
+        return http_getdir(targ, res_len);
     return http_getfile(st, targ, res_len);
 }
 
@@ -196,30 +197,24 @@ static char *http_getfile(struct stat st, const char *targ, size_t *res_len)
     return res;
 }
 
-static char *http_getdir(struct stat st, const char *targ, size_t *res_len)
+static char *http_getdir(const char *targ, size_t *res_len)
 {
     // kinda like https://github.com/jmattaa/laser
     // the function called laser_process_entries in src/laser.c
 
-    // srtip away all the '/' from targ
-    char *t = strdup(targ);
-    if (t[0] == '/')
-        t++;
-    if (t[strlen(t) - 1] == '/')
-        t[strlen(t) - 1] = '\0';
-
-    DIR *dir = opendir(t);
-    free(t);
+    DIR *dir = opendir(targ);
     if (dir == NULL)
     {
-        servc_logger_error("Failed to open directory: %s\n", t);
+        servc_logger_error("Failed to open directory: %s\n", targ);
         *res_len = strlen(notfound);
         return strdup(notfound);
     }
 
     struct dirent *ent = NULL;
 
-    const char *htmltemp = "<li><a href=\"%s\">%s</a></li>\n";
+    // the '/' before the target is importante cuz it says to the browser
+    // to go directly to pathatag
+    const char *htmltemp = "<li><a href=\"/%s\">%s</a></li>\n";
     char *html = malloc(1);
     if (!html)
     {
@@ -236,7 +231,34 @@ static char *http_getdir(struct stat st, const char *targ, size_t *res_len)
         if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
             continue;
 
-        char *temp = malloc(strlen(htmltemp) + strlen(ent->d_name) +
+
+        size_t pathatag_len;
+        if (targ[strlen(targ) - 1] != '/')
+            // +1 for the '/' and +1 for the '\0'
+            pathatag_len = strlen(targ) + strlen(ent->d_name) + 2;
+        else
+            pathatag_len = strlen(ent->d_name);
+
+        char *pathatag = malloc(pathatag_len);
+
+        if (!pathatag)
+        {
+            servc_logger_error("Memory allocation failed\n");
+            closedir(dir);
+            free(ent);
+            free(html);
+            *res_len = strlen(notfound);
+            return strdup(notfound);
+        }
+        if (pathatag_len == strlen(ent->d_name))
+        {
+            free(pathatag);
+            pathatag = strdup(ent->d_name);
+        }
+        else
+            snprintf(pathatag, pathatag_len, "%s/%s", targ, ent->d_name);
+
+        char *temp = malloc(strlen(htmltemp) + pathatag_len +
                             strlen(ent->d_name) + 1);
         if (!temp)
         {
@@ -249,9 +271,8 @@ static char *http_getdir(struct stat st, const char *targ, size_t *res_len)
         }
 
         snprintf(temp,
-                 strlen(htmltemp) + strlen(ent->d_name) + strlen(ent->d_name) +
-                     1,
-                 htmltemp, ent->d_name, ent->d_name);
+                 strlen(htmltemp) + pathatag_len + strlen(ent->d_name) + 1,
+                 htmltemp, pathatag, ent->d_name);
 
         html = realloc(html, strlen(html) + strlen(temp) + 1);
         if (!html)
@@ -261,11 +282,13 @@ static char *http_getdir(struct stat st, const char *targ, size_t *res_len)
             closedir(dir);
             free(ent);
             free(html);
+            free(pathatag);
             *res_len = strlen(notfound);
             return strdup(notfound);
         }
         html = strncat(html, temp, strlen(temp));
 
+        free(pathatag);
         free(temp);
     }
     free(ent);
@@ -278,7 +301,7 @@ static char *http_getdir(struct stat st, const char *targ, size_t *res_len)
                                                "Content-Type: text/html\r\n"
                                                "Content-Length: %zu\r\n"
                                                "\r\n",
-                              (size_t)st.st_size);
+                              strlen(html));
 
     if (header_len < 0 || header_len >= HEADER_SIZE)
     {
