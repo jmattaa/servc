@@ -30,7 +30,7 @@ rel_exec = "./build/res/servc";
 }
 
 "build_devobjs" {
-    depends = "srcs", "headers", devobjs;
+    depends = srcs, headers, devobjs;
     depends_parallel = true;
 }
 
@@ -40,7 +40,7 @@ rel_exec = "./build/res/servc";
 }
 
 "build_relobjs" {
-    depends = "srcs", "headers", relobjs;
+    depends = srcs, headers, relobjs;
     depends_parallel = true;
 }
 
