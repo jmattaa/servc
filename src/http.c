@@ -2,6 +2,7 @@
 #include "http.h"
 #include "ftype.h"
 #include "logger.h"
+#include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -14,6 +15,7 @@
 
 #define HEADER_SIZE 512
 
+static char *http_decodetarg(char *targ);
 static char *http_get(const char *targ, size_t *res_len);
 static char *http_getfile(struct stat st, const char *targ, size_t *res_len);
 static char *http_getdir(const char *targ, size_t *res_len);
@@ -60,7 +62,7 @@ servc_http *servc_http_parse(char *req)
         free(http);
         return NULL;
     }
-    http->targ = strdup(targ);
+    http->targ = http_decodetarg(strdup(targ));
     if (!http->targ)
     {
         servc_logger_error("failed to allocate memory for target\n");
@@ -101,6 +103,32 @@ void servc_http_destroy(servc_http *http)
         free(http->targ);
     if (http)
         free(http);
+}
+
+static char *http_decodetarg(char *s)
+{
+    char *ret = s;
+    char *o = s;
+    for (; *s; s++, o++)
+    {
+        if (*s == '%' && isxdigit(*(s + 1)) && isxdigit(*(s + 2)))
+        {
+            char hex[3] = {*(s + 1), *(s + 2), '\0'};
+            *o = strtol(hex, NULL, 16);
+            s += 2;
+        }
+        else if (*s == '+')
+        {
+            *o = ' ';
+        }
+        else
+        {
+            *o = *s;
+        }
+    }
+
+    *o = '\0';
+    return ret;
 }
 
 static const char *notfound =
@@ -230,7 +258,6 @@ static char *http_getdir(const char *targ, size_t *res_len)
         if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
             continue;
 
-
         size_t pathatag_len;
         if (targ[strlen(targ) - 1] != '/')
             // +1 for the '/' and +1 for the '\0'
@@ -257,8 +284,8 @@ static char *http_getdir(const char *targ, size_t *res_len)
         else
             snprintf(pathatag, pathatag_len, "%s/%s", targ, ent->d_name);
 
-        char *temp = malloc(strlen(htmltemp) + pathatag_len +
-                            strlen(ent->d_name) + 1);
+        char *temp =
+            malloc(strlen(htmltemp) + pathatag_len + strlen(ent->d_name) + 1);
         if (!temp)
         {
             servc_logger_error("Memory allocation failed\n");
