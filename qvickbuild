@@ -17,7 +17,7 @@ relobjs = srcs: "./src/*.c" -> "./build/rel/*.o";
 headers = "include/*.h";
 
 dev_exec = "./servc";
-rel_exec = "./build/res/servc";
+rel_exec = "./build/rel/servc";
 
 "dev" {
     depends = "mkdirs", "build_devobjs";
